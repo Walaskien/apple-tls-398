@@ -1,0 +1,64 @@
+# A cert-manager Certificate that Apple clients will accept.
+#
+# The two fields that matter are duration and renewBefore. Everything else is
+# an ordinary internal-PKI setup: a self-signed root, and leaves issued from it.
+
+---
+# The root CA. A long duration is correct here — the 398-day limit applies to
+# server certificates, not to CAs. Clients install this once and never again.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: internal-root-ca
+  namespace: cert-manager
+spec:
+  isCA: true
+  commonName: Example Internal Root CA
+  secretName: internal-root-ca-tls
+  duration: 87600h # 10 years — fine for a root
+  renewBefore: 8760h
+  privateKey:
+    algorithm: RSA
+    size: 4096
+  issuerRef:
+    name: selfsigned-bootstrap
+    kind: Issuer
+    group: cert-manager.io
+
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: internal-ca-issuer
+spec:
+  ca:
+    secretName: internal-root-ca-tls
+
+---
+# A leaf certificate. This is the one Apple is strict about.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: app-tls
+  namespace: default
+spec:
+  secretName: app-tls
+  dnsNames:
+    - app.example.internal
+
+  # Apple rejects anything over 398 days. 365 leaves room and renews annually.
+  duration: 8760h
+
+  # Must be smaller than duration, or cert-manager rejects the resource.
+  # This is the field people forget when shortening a long-lived certificate:
+  # the old value is often larger than the new duration.
+  renewBefore: 1440h
+
+  privateKey:
+    algorithm: RSA
+    size: 2048
+    rotationPolicy: Always
+  issuerRef:
+    name: internal-ca-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
