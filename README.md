@@ -4,7 +4,7 @@
 
 A trusted private CA is not enough. Apple's TLS stack rejects any server certificate
 whose validity period exceeds **398 days**, and it does so *after* the chain has been
-verified — so the failure looks nothing like a trust problem.
+verified, so the failure looks nothing like a trust problem.
 
 This repository explains the failure mode, shows how to confirm it in under a minute,
 and gives a working `cert-manager` configuration that avoids it.
@@ -21,9 +21,9 @@ INFO  OauthController : Success login by basic auth from 10.x.x.x
 The login *succeeded*. The server issued a token. Yet the browser behaves as if nothing
 happened, and no further API request ever arrives.
 
-The reason is that the UI and the API live on different hostnames — say `app.example.internal`
+The reason is that the UI and the API live on different hostnames, say `app.example.internal`
 and `api.example.internal`. The user clicked through a certificate warning for the first one.
-The second one never gets a warning, because **browsers do not prompt on XHR/fetch** — they
+The second one never gets a warning, because **browsers do not prompt on XHR/fetch**, they
 fail the request silently. The response is discarded before any JavaScript sees it.
 
 ## The part that surprises people
@@ -38,15 +38,15 @@ Since September 2020, Apple rejects TLS server certificates valid for more than 
 > period greater than 398 days. Connections to TLS servers violating these requirements
 > will fail.
 >
-> — [Apple Support HT211025](https://support.apple.com/en-us/HT211025)
+>, [Apple Support HT211025](https://support.apple.com/en-us/HT211025)
 
 The failure surfaces as `errSSLXCertChainInvalid` (`-9807`), or `NSURLErrorServerCertificateUntrusted`
 (`-1202`) at the URLSession layer. Both read like "the chain is broken", which sends you
-looking at the CA — the one thing that is actually fine.
+looking at the CA, the one thing that is actually fine.
 
 Chrome and Firefox enforce the same limit, but **exempt locally-installed roots**. So an
 internal PKI with long-lived leaf certificates works on Windows, works in Chrome, works in
-Firefox — and fails only on Macs and iPhones. That asymmetry is what makes it hard to spot.
+Firefox, and fails only on Macs and iPhones. That asymmetry is what makes it hard to spot.
 
 ## Confirming it in one minute
 
@@ -58,7 +58,7 @@ $ curl -sv https://app.example.internal 2>&1 | grep CAfile
 *  CAfile: /etc/ssl/cert.pem
 ```
 
-Use `nscurl` instead — it goes through `NSURLSession` and therefore the same trust
+Use `nscurl` instead, it goes through `NSURLSession` and therefore the same trust
 evaluation Safari uses:
 
 ```console
@@ -75,7 +75,7 @@ app.example.internal:443
   not before : 2026-08-13
   not after  : 2036-08-10
   validity   : 3650 days
-  FAIL — exceeds Apple's 398-day limit; Safari and iOS will reject this certificate
+  FAIL, exceeds Apple's 398-day limit; Safari and iOS will reject this certificate
 ```
 
 If `openssl verify` succeeds against your CA while Apple clients still refuse the
@@ -91,7 +91,7 @@ not a trust failure.
 
 ## The fix
 
-Shorten the **leaf** certificates. Leave the root CA alone — the 398-day limit applies to
+Shorten the **leaf** certificates. Leave the root CA alone, the 398-day limit applies to
 server certificates, not to CAs, and a long-lived root is exactly what you want: clients
 install it once and never think about it again.
 
@@ -100,7 +100,7 @@ With `cert-manager`, that is a two-field change. See
 
 ```yaml
 spec:
-  duration: 8760h    # 365 days — comfortably under the 398-day limit
+  duration: 8760h    # 365 days, comfortably under the 398-day limit
   renewBefore: 1440h # renew 60 days before expiry
 ```
 
@@ -136,11 +136,11 @@ root they already trust. Distributing the root is a one-time job.
 
 - [ ] Leaf certificate validity ≤ 398 days (365 is a safe, round choice)
 - [ ] `renewBefore` < `duration`
-- [ ] Root CA installed on every Apple client — for iOS, ship it inside the same
+- [ ] Root CA installed on every Apple client, for iOS, ship it inside the same
       `.mobileconfig` as any VPN profile so both install in one tap
 - [ ] On macOS, trust the root with an explicit policy, or the trust settings come out empty:
       `sudo security add-trusted-cert -d -r trustRoot -p ssl -p basic -k /Library/Keychains/System.keychain ca.pem`
-- [ ] Verify with `security dump-trust-settings -d` — the settings count must not be 0
+- [ ] Verify with `security dump-trust-settings -d`, the settings count must not be 0
 - [ ] Test with `nscurl`, never with `curl`
 
 ## References
@@ -172,4 +172,4 @@ Not verified: the `Certificate` example against a live cert-manager in this repo
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE).

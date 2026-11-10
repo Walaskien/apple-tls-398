@@ -4,7 +4,7 @@
 # an ordinary internal-PKI setup: a self-signed root, and leaves issued from it.
 
 ---
-# The root CA. A long duration is correct here — the 398-day limit applies to
+# The root CA. A long duration is correct here, the 398-day limit applies to
 # server certificates, not to CAs. Clients install this once and never again.
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -15,7 +15,7 @@ spec:
   isCA: true
   commonName: Example Internal Root CA
   secretName: internal-root-ca-tls
-  duration: 87600h # 10 years — fine for a root
+  duration: 87600h # 10 years, fine for a root
   renewBefore: 8760h
   privateKey:
     algorithm: RSA

@@ -23,13 +23,13 @@ port=${target##*:}
 [ "$port" = "$host" ] && port=443
 connect=${2:-$host}
 
-# s_client exits non-zero whenever chain verification fails — including the
-# self-signed case this script exists to diagnose — so its exit code says
+# s_client exits non-zero whenever chain verification fails, including the
+# self-signed case this script exists to diagnose, so its exit code says
 # nothing about whether we reached the server. Check for a certificate instead.
 cert=$(openssl s_client -connect "${connect}:${port}" -servername "$host" </dev/null 2>/dev/null || true)
 
 if ! printf '%s' "$cert" | grep -q "BEGIN CERTIFICATE"; then
-    echo "$host:$port — cannot connect, or no certificate returned" >&2
+    echo "$host:$port, cannot connect, or no certificate returned" >&2
     exit 1
 fi
 
@@ -63,8 +63,8 @@ echo "  validity   : ${days} days"
 echo "  remaining  : ${remaining} days"
 
 if [ "$days" -gt "$APPLE_LIMIT_DAYS" ]; then
-    echo "  FAIL — exceeds Apple's ${APPLE_LIMIT_DAYS}-day limit; Safari and iOS will reject this certificate"
+    echo "  FAIL, exceeds Apple's ${APPLE_LIMIT_DAYS}-day limit; Safari and iOS will reject this certificate"
     exit 1
 fi
 
-echo "  OK — within Apple's ${APPLE_LIMIT_DAYS}-day limit"
+echo "  OK, within Apple's ${APPLE_LIMIT_DAYS}-day limit"
