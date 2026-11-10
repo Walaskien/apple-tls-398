@@ -1,5 +1,7 @@
 # Why Safari rejects your internal certificate (and Chrome doesn't)
 
+[![ci](https://github.com/Walaskien/apple-tls-398/actions/workflows/ci.yml/badge.svg)](https://github.com/Walaskien/apple-tls-398/actions/workflows/ci.yml)
+
 A trusted private CA is not enough. Apple's TLS stack rejects any server certificate
 whose validity period exceeds **398 days**, and it does so *after* the chain has been
 verified — so the failure looks nothing like a trust problem.
@@ -146,6 +148,27 @@ root they already trust. Distributing the root is a one-time job.
 - [Apple: Requirements for trusted certificates in iOS 13 and macOS 10.15](https://support.apple.com/en-us/HT210176)
 - [Apple: About upcoming limits on trusted certificates](https://support.apple.com/en-us/HT211025)
 - [cert-manager: Certificate resource](https://cert-manager.io/docs/usage/certificate/)
+
+## Verified
+
+| Check | Result |
+|---|---|
+| `bash -n` and `shellcheck` on `check-cert-validity.sh` | clean |
+| Script against a local TLS server with a 500-day certificate | `validity: 500 days`, FAIL, exit code 1 |
+| Script against a public server with a 90-day certificate | OK, exit code 0 |
+| GitHub Actions (`ci`) | see the badge; the job repeats the 500-day and 90-day checks with local test certificates |
+
+Not verified: the `Certificate` example against a live cert-manager in this repository (it is exercised in [single-node-k8s-platform](https://github.com/Walaskien/single-node-k8s-platform)), and Safari or iOS behaviour on a device.
+
+## Limitations
+
+- The script reads the server certificate only; it does not check chain trust or the Subject Alternative Names.
+- The 398-day figure is Apple's published limit for newly issued server certificates; check the current Apple documentation before relying on it.
+
+## Related
+
+- [single-node-k8s-platform](https://github.com/Walaskien/single-node-k8s-platform): uses 365-day leaf certificates from cert-manager.
+- [dual-homed-routing](https://github.com/Walaskien/dual-homed-routing): another short write-up of a failure that looks like one thing and is another.
 
 ## License
 
