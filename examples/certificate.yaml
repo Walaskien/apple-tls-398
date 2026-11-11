@@ -1,10 +1,10 @@
-# A cert-manager Certificate that Apple clients will accept.
+# A cert-manager Certificate with a validity that stays under Apple's limits.
 #
 # The two fields that matter are duration and renewBefore. Everything else is
 # an ordinary internal-PKI setup: a self-signed root, and leaves issued from it.
 
 ---
-# The root CA. A long duration is correct here, the 398-day limit applies to
+# The root CA. A long duration is fine here: the validity limits apply to
 # server certificates, not to CAs. Clients install this once and never again.
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -35,7 +35,7 @@ spec:
     secretName: internal-root-ca-tls
 
 ---
-# A leaf certificate. This is the one Apple is strict about.
+# A leaf certificate. This is the one the validity limits apply to.
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -46,7 +46,7 @@ spec:
   dnsNames:
     - app.example.internal
 
-  # Apple rejects anything over 398 days. 365 leaves room and renews annually.
+  # 365 days: under Apple's 398-day and 825-day limits, renewed annually.
   duration: 8760h
 
   # Must be smaller than duration, or cert-manager rejects the resource.

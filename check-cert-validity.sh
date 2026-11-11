@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Report the validity period of a TLS server certificate and flag anything
-# Apple's TLS stack will reject (limit: 398 days).
+# Report the validity period of a TLS server certificate and compare it with
+# Apple's documented limits: 825 days (iOS 13 / macOS 10.15, all TLS server
+# certificates) and 398 days (publicly trusted CAs, since September 2020).
+# Over 825 days: exit 1. Over 398 days: warning only, exit 0.
 #
 #   ./check-cert-validity.sh example.com
 #   ./check-cert-validity.sh example.com:8443
@@ -8,7 +10,8 @@
 
 set -euo pipefail
 
-APPLE_LIMIT_DAYS=398
+LIMIT_ALL_DAYS=825     # applies to every TLS server certificate
+LIMIT_PUBLIC_DAYS=398  # publicly trusted CAs; Apple exempts user-added roots
 
 usage() {
     echo "usage: $0 <host[:port]> [connect-ip]" >&2
@@ -62,9 +65,14 @@ echo "  not after  : $not_after"
 echo "  validity   : ${days} days"
 echo "  remaining  : ${remaining} days"
 
-if [ "$days" -gt "$APPLE_LIMIT_DAYS" ]; then
-    echo "  FAIL, exceeds Apple's ${APPLE_LIMIT_DAYS}-day limit; Safari and iOS will reject this certificate"
+if [ "$days" -gt "$LIMIT_ALL_DAYS" ]; then
+    echo "  FAIL, exceeds Apple's ${LIMIT_ALL_DAYS}-day limit for TLS server certificates"
     exit 1
 fi
 
-echo "  OK, within Apple's ${APPLE_LIMIT_DAYS}-day limit"
+if [ "$days" -gt "$LIMIT_PUBLIC_DAYS" ]; then
+    echo "  WARN, exceeds ${LIMIT_PUBLIC_DAYS} days: fine for a private CA per Apple, not for a public one"
+    exit 0
+fi
+
+echo "  OK, within ${LIMIT_PUBLIC_DAYS} days"

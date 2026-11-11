@@ -7,15 +7,17 @@ jobs:
       - uses: actions/checkout@v4
       - run: bash -n check-cert-validity.sh
       - run: shellcheck check-cert-validity.sh
-      - name: Script flags a 500-day certificate and accepts a 90-day one
+      - name: Script accepts 90 days, warns at 500 days and fails at 900 days
         run: |
           set -u
           d="$(mktemp -d)"
-          for days in 90 500; do
+          for days in 90 500 900; do
             openssl req -x509 -newkey rsa:2048 -nodes -keyout "$d/k$days.pem" -out "$d/c$days.pem" -days "$days" -subj "/CN=localhost" 2>/dev/null
           done
           openssl s_server -accept 9490 -cert "$d/c90.pem" -key "$d/k90.pem" -www >/dev/null 2>&1 &
           openssl s_server -accept 9500 -cert "$d/c500.pem" -key "$d/k500.pem" -www >/dev/null 2>&1 &
+          openssl s_server -accept 9900 -cert "$d/c900.pem" -key "$d/k900.pem" -www >/dev/null 2>&1 &
           sleep 2
-          ./check-cert-validity.sh localhost:9490
-          if ./check-cert-validity.sh localhost:9500; then echo "500-day certificate was not flagged"; exit 1; fi
+          ./check-cert-validity.sh localhost:9490 | grep -q '^  OK'
+          ./check-cert-validity.sh localhost:9500 | grep -q '^  WARN'
+          if ./check-cert-validity.sh localhost:9900; then echo "900-day certificate was not rejected"; exit 1; fi
