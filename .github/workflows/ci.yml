@@ -4,7 +4,7 @@ jobs:
   script:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: bash -n check-cert-validity.sh
       - run: shellcheck check-cert-validity.sh
       - name: Script accepts 90 days, warns at 500 days and fails at 900 days
