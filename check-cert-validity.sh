@@ -2,7 +2,7 @@
 # Report the validity period of a TLS server certificate and compare it with
 # Apple's documented limits: 825 days (iOS 13 / macOS 10.15, all TLS server
 # certificates) and 398 days (publicly trusted CAs, since September 2020).
-# Over 825 days: exit 1. Over 398 days: warning only, exit 0.
+# Over 825 days, expired or not yet valid: exit 1. Over 398 days: warning only, exit 0.
 #
 #   ./check-cert-validity.sh example.com
 #   ./check-cert-validity.sh example.com:8443
@@ -64,6 +64,18 @@ echo "  not before : $not_before"
 echo "  not after  : $not_after"
 echo "  validity   : ${days} days"
 echo "  remaining  : ${remaining} days"
+
+now=$(date +%s)
+
+if [ "$end_epoch" -lt "$now" ]; then
+    echo "  FAIL, certificate expired $(( (now - end_epoch) / 86400 )) days ago"
+    exit 1
+fi
+
+if [ "$start_epoch" -gt "$now" ]; then
+    echo "  FAIL, not valid yet (starts in $(( (start_epoch - now) / 86400 )) days)"
+    exit 1
+fi
 
 if [ "$days" -gt "$LIMIT_ALL_DAYS" ]; then
     echo "  FAIL, exceeds Apple's ${LIMIT_ALL_DAYS}-day limit for TLS server certificates"

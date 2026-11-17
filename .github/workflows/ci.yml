@@ -21,3 +21,23 @@ jobs:
           ./check-cert-validity.sh localhost:9490 | grep -q '^  OK'
           ./check-cert-validity.sh localhost:9500 | grep -q '^  WARN'
           if ./check-cert-validity.sh localhost:9900; then echo "900-day certificate was not rejected"; exit 1; fi
+      - name: Script fails on an expired and on a not-yet-valid certificate
+        run: |
+          set -u
+          d="$(mktemp -d)"
+          cd "$d"
+          printf '[ca]\ndefault_ca = c\n[c]\ndatabase = %s/index.txt\nnew_certs_dir = %s\nserial = %s/serial\ndefault_md = sha256\npolicy = p\nunique_subject = no\n[p]\ncommonName = supplied\n' "$d" "$d" "$d" > ca.cnf
+          : > index.txt; echo 01 > serial
+          openssl req -x509 -newkey rsa:2048 -nodes -keyout cakey.pem -out ca.pem -days 30 -subj "/CN=testca" 2>/dev/null
+          openssl req -newkey rsa:2048 -nodes -keyout k.pem -out r.csr -subj "/CN=localhost" 2>/dev/null
+          issue() { openssl ca -batch -config ca.cnf -cert ca.pem -keyfile cakey.pem -in r.csr -out "$1.pem" -startdate "$2" -enddate "$3" -notext 2>/dev/null; }
+          issue expired 20240101000000Z 20240401000000Z
+          issue future "$(date -u -d '+30 days' +%Y%m%d000000Z)" "$(date -u -d '+120 days' +%Y%m%d000000Z)"
+          openssl s_server -accept 9611 -cert expired.pem -key k.pem -www >/dev/null 2>&1 &
+          openssl s_server -accept 9612 -cert future.pem -key k.pem -www >/dev/null 2>&1 &
+          sleep 2
+          cd - >/dev/null
+          out=$(./check-cert-validity.sh localhost:9611) && { echo "expired certificate was accepted"; exit 1; }
+          echo "$out" | grep -q '^  FAIL, certificate expired'
+          out=$(./check-cert-validity.sh localhost:9612) && { echo "future certificate was accepted"; exit 1; }
+          echo "$out" | grep -q '^  FAIL, not valid yet'

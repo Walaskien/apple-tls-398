@@ -72,7 +72,8 @@ Load failed with error: ... Code=-1202 "The certificate for this server is inval
 ```
 
 Then check the validity period. [`check-cert-validity.sh`](check-cert-validity.sh) does this
-for any host. It exits 1 above 825 days and prints a warning above 398 days:
+for any host. It exits 1 above 825 days, for an expired certificate and for one that is not valid yet,
+and prints a warning above 398 days:
 
 ```console
 $ ./check-cert-validity.sh app.example.internal
@@ -140,7 +141,8 @@ when you alert on certificate expiry.
 |---|---|
 | `bash -n` and `shellcheck` on `check-cert-validity.sh` | clean (in CI) |
 | Script against local TLS servers with 90, 500 and 900 day certificates | OK, WARN (exit 0), FAIL (exit 1) |
-| GitHub Actions (see the badge) | repeats the three checks with generated certificates |
+| Script against local TLS servers with a certificate that expired in April 2024 and one that starts in 30 days | `FAIL, certificate expired 960 days ago` and `FAIL, not valid yet (starts in 29 days)`, both exit 1 (LibreSSL 3.3.6, before the fix both said OK) |
+| GitHub Actions (see the badge) | repeats the checks with generated certificates |
 
 Not verified: the `Certificate` example against a live cert-manager in this repository (it is
 used in [single-node-k8s-platform](https://github.com/Walaskien/single-node-k8s-platform)), and
